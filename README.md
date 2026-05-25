@@ -164,8 +164,8 @@ cd OpenMeet
 npm install
 
 # 3. Configurar variables de entorno
-cp .env.local.example .env.local
-# Editar .env.local con tus credenciales de Cloudflare
+cp env.example .env.local
+# Editar .env.local con tus credenciales reales de Cloudflare
 
 # 4. Iniciar servidor de desarrollo
 npm run dev
