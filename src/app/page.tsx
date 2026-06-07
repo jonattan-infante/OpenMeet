@@ -119,7 +119,11 @@ function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
   const updateParticipants = useCallback(() => {
     if (!isMountedRef.current || !meetingRef.current) return;
     const active = meetingRef.current.participants.active;
-    const participants = active.toArray().map(participantToState);
+    const selfId = meetingRef.current.self.id;
+    // Filter out the local participant
+    const participants = active.toArray()
+      .filter((p: RTKParticipant) => p.id !== selfId)
+      .map(participantToState);
     setRemoteParticipants(participants);
   }, [participantToState]);
 
