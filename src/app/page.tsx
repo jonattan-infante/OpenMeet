@@ -92,6 +92,8 @@ function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
   const [remoteParticipants, setRemoteParticipants] = useState<ParticipantState[]>([]);
   const meetingRef = useRef<MeetingState['meeting'] | null>(null);
   const isMountedRef = useRef(true);
+  // Use a Map to track participants by ID to avoid duplicates
+  const participantsMapRef = useRef(new Map<string, ParticipantState>());
 
   const updateSelfState = useCallback((self: RTKSelf) => {
     if (!isMountedRef.current) return;
@@ -120,11 +122,26 @@ function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
     if (!isMountedRef.current || !meetingRef.current) return;
     const active = meetingRef.current.participants.active;
     const selfId = meetingRef.current.self.id;
-    // Filter out the local participant
-    const participants = active.toArray()
-      .filter((p: RTKParticipant) => p.id !== selfId)
-      .map(participantToState);
-    setRemoteParticipants(participants);
+    const map = participantsMapRef.current;
+    
+    // Get current remote participants from SDK
+    const activeParticipants = active.toArray().filter((p: RTKParticipant) => p.id !== selfId);
+    
+    // Remove participants that are no longer active
+    const activeIds = new Set(activeParticipants.map((p: RTKParticipant) => p.id));
+    for (const [id] of map) {
+      if (!activeIds.has(id)) {
+        map.delete(id);
+      }
+    }
+    
+    // Add or update current participants
+    for (const p of activeParticipants) {
+      map.set(p.id, participantToState(p));
+    }
+    
+    // Convert to array for React state
+    setRemoteParticipants(Array.from(map.values()));
   }, [participantToState]);
 
   useEffect(() => {
