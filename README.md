@@ -40,8 +40,7 @@ flowchart TB
 
     subgraph Backend["⚙️ Backend (Next.js 16)"]
         API1["/api/meeting/token<br/>Generación de tokens"]
-        API2["/api/meeting/session<br/>Gestión de sesiones"]
-        API3["/api/logs<br/>Logging"]
+        API2["/api/logs<br/>Logging"]
         UI["/ (App Router)<br/>UI Principal"]
     end
 
@@ -53,7 +52,6 @@ flowchart TB
     C2 <-->|WebRTC| RT
     C3 <-->|WebRTC| RT
     C1 -->|HTTP/REST| API1
-    C1 -->|HTTP/REST| API2
     C2 -->|HTTP/REST| API1
     C3 -->|HTTP/REST| API1
 ```
@@ -96,14 +94,12 @@ flowchart LR
 
     subgraph API["🔌 API Routes"]
         Token["/token"]
-        Session["/session"]
         Logs["/logs"]
     end
 
     Home -->|UUID generado| Meeting
     Meeting --> Grid
     Meeting -->|POST| Token
-    Meeting -->|GET/POST| Session
     Meeting -.->|Opcional| Logs
 ```
 
@@ -131,12 +127,9 @@ flowchart LR
 │   │   ├── api/                      # API Routes
 │   │   │   ├── logs/route.ts         # Endpoint de logging
 │   │   │   └── meeting/
-│   │   │       ├── session/route.ts  # Gestión de sesiones
 │   │   │       └── token/route.ts    # Generación de tokens
 │   │   ├── layout.tsx                # Root layout
 │   │   └── page.tsx                  # Home + UI de reunión
-│   └── components/
-│       └── Meeting.tsx               # Componente de video (legacy)
 ├── public/                           # Assets estáticos
 ├── .env.local                        # Variables de entorno
 ├── next.config.ts                    # Config de Next.js
@@ -185,9 +178,11 @@ CLOUDFLARE_ACCOUNT_ID=your_account_id_here
 CLOUDFLARE_APP_ID=your_app_id_here
 CLOUDFLARE_API_TOKEN=your_api_token_here
 
-# Opcional: para el componente legacy Meeting.tsx
+# Optional: preset name for participants (default: group_call_participant)
+CLOUDFLARE_PRESET_NAME=group_call_participant
+
+# Optional: public app ID for client-side reference
 NEXT_PUBLIC_CLOUDFLARE_APP_ID=your_app_id_here
-NEXT_PUBLIC_CLOUDFLARE_APP_SECRET=your_app_secret_here
 ```
 
 **¿Dónde conseguir estas credenciales?**
@@ -203,8 +198,6 @@ NEXT_PUBLIC_CLOUDFLARE_APP_SECRET=your_app_secret_here
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `POST` | `/api/meeting/token` | Obtiene token de autenticación para unirse a reunión |
-| `POST` | `/api/meeting/session` | Guarda el mapping meetingId → sessionId |
-| `GET` | `/api/meeting/session?meetingId=xxx` | Recupera sessionId por meetingId |
 | `POST` | `/api/logs` | Logging server-side para debugging |
 
 ### Ejemplo: Crear unirse a reunión
