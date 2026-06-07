@@ -78,9 +78,10 @@ function ParticipantGrid({ localParticipant, remoteParticipants }: {
   );
 }
 
-function MeetingContent({ meetingId }: { meetingId: string }) {
+function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [meetingId, setMeetingId] = useState(initialMeetingId);
   const [localParticipant, setLocalParticipant] = useState<ParticipantState>({
     id: 'local',
     name: 'You',
@@ -131,7 +132,7 @@ function MeetingContent({ meetingId }: { meetingId: string }) {
         const res = await fetch('/api/meeting/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ meetingId })
+          body: JSON.stringify({ meetingId: initialMeetingId })
         });
 
         if (!res.ok) {
@@ -139,8 +140,15 @@ function MeetingContent({ meetingId }: { meetingId: string }) {
           throw new Error(err.error || 'Failed to get auth token');
         }
 
-        const { authToken } = await res.json();
-        console.log('Got authToken');
+        const { authToken, meetingId: realMeetingId } = await res.json();
+        console.log('Got authToken for meeting:', realMeetingId);
+
+        // Update the meeting ID to the real Cloudflare meeting ID
+        if (realMeetingId && realMeetingId !== initialMeetingId) {
+          setMeetingId(realMeetingId);
+          // Update URL so the invite link is correct
+          window.history.replaceState(null, '', `/?id=${realMeetingId}`);
+        }
 
         meeting = await RealtimeKitClient.init({
           authToken,
@@ -217,7 +225,7 @@ function MeetingContent({ meetingId }: { meetingId: string }) {
         meeting.leave();
       }
     };
-  }, [meetingId, updateSelfState, updateParticipants]);
+  }, [initialMeetingId, updateSelfState, updateParticipants]);
 
   const toggleAudio = useCallback(() => {
     const meeting = meetingRef.current;
@@ -334,7 +342,7 @@ function HomeContent() {
   };
 
   if (meetingId) {
-    return <MeetingContent meetingId={meetingId} />;
+    return <MeetingContent initialMeetingId={meetingId} />;
   }
 
   return (
