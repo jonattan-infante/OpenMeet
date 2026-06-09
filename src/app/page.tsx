@@ -55,7 +55,11 @@ function ParticipantGrid({ localParticipant, remoteParticipants }: {
   localParticipant: ParticipantState;
   remoteParticipants: ParticipantState[];
 }) {
-  const allParticipants = [localParticipant, ...remoteParticipants];
+  // Filter out any remote participant that has the same ID as local
+  const filteredRemote = remoteParticipants.filter(
+    (p) => p.id !== localParticipant.id
+  );
+  const allParticipants = [localParticipant, ...filteredRemote];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
@@ -125,19 +129,43 @@ function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
     const map = participantsMapRef.current;
     
     // Get current remote participants from SDK
-    const activeParticipants = active.toArray().filter((p: RTKParticipant) => p.id !== selfId);
+    const selfClientId = (meetingRef.current.self as any).clientSpecificId;
+    const activeParticipants = (active.toArray() as any[]).filter((p: any) => {
+      // Filter out self by ID
+      if (p.id === selfId) return false;
+      // Filter out duplicate of self by clientSpecificId
+      if (p.clientSpecificId && selfClientId && p.clientSpecificId === selfClientId) return false;
+      return true;
+    });
     
-    // Remove participants that are no longer active
-    const activeIds = new Set(activeParticipants.map((p: RTKParticipant) => p.id));
+    // Deduplicate by ID
+    const dedupedMap = new Map<string, any>();
+    for (const p of activeParticipants) {
+      dedupedMap.set(p.id, p);
+    }
+    const uniqueParticipants = Array.from(dedupedMap.values());
+    
+    const ids = uniqueParticipants.map((p: any) => p.id);
+    const hasDuplicates = ids.length !== new Set(ids).size;
+    console.log('updateParticipants:', {
+      selfId,
+      activeCount: active.toArray().length,
+      remoteCount: uniqueParticipants.length,
+      hasDuplicates,
+      remoteIds: uniqueParticipants.map((p: any) => ({ id: p.id, name: p.name }))
+    });
+    
+    // Remove participants that are no longer present
+    const currentIds = new Set(uniqueParticipants.map((p: any) => p.id));
     for (const [id] of map) {
-      if (!activeIds.has(id)) {
+      if (!currentIds.has(id)) {
         map.delete(id);
       }
     }
     
     // Add or update current participants
-    for (const p of activeParticipants) {
-      map.set(p.id, participantToState(p));
+    for (const p of uniqueParticipants) {
+      map.set(p.id, participantToState(p as any));
     }
     
     // Convert to array for React state
@@ -176,6 +204,7 @@ function MeetingContent({ initialMeetingId }: { initialMeetingId: string }) {
           defaults: { audio: true, video: true }
         });
         meetingRef.current = meeting;
+        (window as any).__MEETING__ = meeting;
         console.log('RealtimeKit initialized');
 
         await meeting.join();
